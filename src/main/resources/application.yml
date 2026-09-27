@@ -29,6 +29,16 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
 
+# 与卫星轨迹核算平台的每日对账
+evops:
+  recon:
+    # 定时勾稽：每天 06:00 对前一日的账（T+1）
+    cron: "0 0 6 * * ?"
+    # 新引擎匹配容差（亩）：|本侧-对方| ≤ 容差算平
+    tolerance-area: 0.05
+    # 并跑期出正式差异清单的引擎：LEGACY / TOLERANCE；连续两天 compare.identical=1 后切 TOLERANCE
+    active-engine: LEGACY
+
 logging:
   level:
     com.evops: INFO

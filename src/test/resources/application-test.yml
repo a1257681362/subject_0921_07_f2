@@ -8,3 +8,6 @@ spring:
     init:
       mode: always
       schema-locations: classpath:schema.sql
+  quartz:
+    # 测试不启动调度器，定时勾稽用手工触发覆盖
+    auto-startup: false

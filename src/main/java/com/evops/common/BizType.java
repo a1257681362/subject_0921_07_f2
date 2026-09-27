@@ -10,6 +10,8 @@ public final class BizType {
     public static final String WORK_ORDER_TRACK_AREA = "WORK_ORDER_TRACK_AREA";
     public static final String WORK_ORDER_MANUAL_AREA = "WORK_ORDER_MANUAL_AREA";
     public static final String WORK_ORDER_REVERSE = "WORK_ORDER_REVERSE";
+    public static final String SAT_BILL_IMPORT = "SAT_BILL_IMPORT";
+    public static final String RECON_WRITEOFF = "RECON_WRITEOFF";
 
     private BizType() {
     }

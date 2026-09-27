@@ -1,6 +1,6 @@
 # EVOPS 基础工作区
 
-合作社作业管理系统骨架（F1：农机底账 + 作业单主链路）。
+合作社作业管理系统骨架（F1：农机底账 + 作业单主链路；F2：卫星轨迹核算平台每日对账）。
 
 技术栈：Java 8、Spring Boot 2.7、MyBatis-Plus、H2 本地文件数据库、Shiro、Thymeleaf。
 
@@ -23,6 +23,15 @@
 - **红冲**：原单置 `REVERSED`，另开反向单 `单号-R`（面积取反、`reversalFlag=1`、`originOrderId` 指向原单）。
 - **事务边界**：建档/流转/面积/红冲均为单事务，台账、主表、状态日志一起提交或整体回退。
 - 同一作业单号并发两笔建档，由 `uk_work_order_no` 唯一约束兜底，只成功一条。
+
+## 对账约定（F2）
+
+- **每日勾稽**：Quartz 定时（`evops.recon.cron`，默认每天 06:00 对前一日的账，T+1）；本地账取当日登记轨迹面积的作业单（含红冲负面积单），对方账由卫星平台推送导入。
+- **一笔对一笔**：按作业单号配对；对方同单号多条按序配对，剩余记对方单边差异。
+- **差异清单**：只放差异（双边面积不符 / 单方缺账），双方明细以勾稽时刻快照留存；重跑不删历史，旧批次与其未核销差异置 SUPERSEDED，已核销保留。
+- **核销**：手工调整唯一入口，核销单记全额调整 + 原因 + 操作人，与差异清零同一事务，核销后差异即时清零；一笔差异只能核销一次（`uk_recon_writeoff_diff` 兜底）。
+- **新旧并跑**：旧引擎严格等额、新引擎容差算平，每次勾稽双引擎都跑，汇总落 `t_recon_compare`；`evops.recon.active-engine` 决定哪套出正式清单，连续两天 `identical=1` 后切 `TOLERANCE`。
+- **容差可配置**：`evops.recon.tolerance-area`（亩），|本侧-对方| ≤ 容差算平，改配置重启生效。
 
 ## 接口
 
@@ -47,4 +56,15 @@
 | POST | `/api/work-orders/{id}/manual-area` | 人工上报面积（仅参考） |
 | POST | `/api/work-orders/{id}/reverse` | 红冲，另开反向单 |
 
-表结构（4 张业务表）：`t_machine`、`t_work_order`、`t_work_order_status_log`、`t_request_record`。
+对账 `/api/recon`
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/api/recon/sat-bills/import` | 导入卫星平台账单明细（requestNo、billDate、lines[]，整批幂等） |
+| POST | `/api/recon/run?bizDate=` | 手工触发勾稽（默认前一日，补跑/联调） |
+| GET | `/api/recon/runs?bizDate=` | 勾稽批次列表 |
+| GET | `/api/recon/diffs?bizDate=&status=` | 差异清单（带双方明细，状态默认 OPEN） |
+| POST | `/api/recon/diffs/{id}/writeoff` | 核销（requestNo、reason、operator），核销后差异即时清零 |
+| GET | `/api/recon/compares?from=&to=` | 新旧引擎并跑对比（连续两天 identical=1 后切 active-engine） |
+
+表结构：F1 四张业务表（`t_machine`、`t_work_order`、`t_work_order_status_log`、`t_request_record`）+ F2 五张对账表（`t_sat_bill_line`、`t_recon_run`、`t_recon_diff`、`t_recon_writeoff`、`t_recon_compare`）。
