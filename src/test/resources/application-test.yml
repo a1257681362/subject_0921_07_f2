@@ -8,3 +8,9 @@ spring:
     init:
       mode: always
       schema-locations: classpath:schema.sql
+
+reconcile:
+  scheduling-enabled: false
+  tolerance: 0.05
+  engine-mode: PARALLEL
+  cutover-batch-size: 2
